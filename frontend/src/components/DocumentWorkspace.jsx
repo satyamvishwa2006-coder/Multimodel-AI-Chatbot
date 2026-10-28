@@ -82,10 +82,40 @@ export function DocumentWorkspace() {
     }
   };
 
-  // Accept revised content into original
-  const handleAcceptRevisions = () => {
+  // Accept revised content into original and persist
+  const handleAcceptRevisions = async () => {
     setOriginalContent(revisedContent);
-    alert('Revisions accepted into working draft!');
+    if (activeDoc?.id) {
+      try {
+        const updated = await api.updateWorkspaceDocument(activeDoc.id, {
+          title,
+          original_content: revisedContent,
+          revised_content: revisedContent,
+        });
+        setActiveDoc(updated);
+        setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+        alert('Revisions saved into working draft!');
+      } catch (err) {
+        alert('Changes updated locally. Server note: ' + err.message);
+      }
+    }
+  };
+
+  // Save manual draft edits
+  const handleSaveDraft = async () => {
+    if (!activeDoc?.id) return;
+    try {
+      const updated = await api.updateWorkspaceDocument(activeDoc.id, {
+        title,
+        original_content: originalContent,
+        revised_content: revisedContent,
+      });
+      setActiveDoc(updated);
+      setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      alert('Draft saved successfully!');
+    } catch (err) {
+      alert('Failed to save draft: ' + err.message);
+    }
   };
 
   return (
@@ -181,7 +211,18 @@ export function DocumentWorkspace() {
         <div className="editor-card">
           <div className="editor-card-header">
             <span>ORIGINAL CONTENT</span>
-            <span>Version #{activeDoc?.version_number ? activeDoc.version_number - 1 : 1}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                className="action-btn"
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                onClick={handleSaveDraft}
+                disabled={!activeDoc || isLoading}
+                title="Save manual changes to database"
+              >
+                💾 Save Draft
+              </button>
+              <span>Version #{activeDoc?.version_number ? activeDoc.version_number - 1 : 1}</span>
+            </div>
           </div>
           <div className="editor-card-body">
             <textarea

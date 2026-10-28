@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.db.session import init_db
-from app.routers import health, conversations, uploads, chat, documents, search, audio
+from app.routers import health, conversations, uploads, chat, documents, search, audio, images, translator
 
 
 @asynccontextmanager
@@ -43,6 +43,8 @@ app.include_router(chat.router)
 app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(audio.router)
+app.include_router(images.router)
+app.include_router(translator.router)
 
 
 @app.get("/")

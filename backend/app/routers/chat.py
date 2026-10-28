@@ -1,4 +1,6 @@
 import json
+import os
+import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -6,12 +8,14 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import Conversation, Message
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.conversation import MessageSchema, SourceCitation, RAGCitation
+from app.schemas.conversation import MessageSchema, MessageAttachment, SourceCitation, RAGCitation
 from app.services.safety_service import SafetyService
 from app.services.llm_service import get_llm_provider
 from app.services.rag_service import RAGService
 from app.services.web_search_service import WebSearchService
 from app.services.audio_service import AudioService
+from app.services.document_service import DocumentService
+from app.services.image_service import ImageService
 from app.utils.session_helper import get_session_id
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
@@ -110,6 +114,68 @@ async def send_chat_message(
             audio_url=None,
         )
 
+    # 3b. Check for Image Generation Intent
+    is_img_gen, img_prompt = ImageService.is_image_generation_request(payload.message)
+    if is_img_gen:
+        img_result = await ImageService.generate_image(img_prompt)
+        ext = "jpg" if img_result["filename"].endswith(".jpg") else "svg"
+        generated_att = MessageAttachment(
+            id=str(uuid.uuid4()),
+            filename=f"generated_{img_result['filename']}",
+            file_type=ext,
+            file_path=img_result["file_path"],
+            file_size=img_result["file_size"],
+            url=img_result["image_url"],
+        )
+        assistant_reply = (
+            f"Here is the image I generated for you based on your prompt:\n\n"
+            f"> **\"{img_prompt}\"**\n\n"
+            f"*(Powered by {img_result['provider']})*\n\n"
+            f"Feel free to request another variation, different colors, or a new concept!"
+        )
+        attachments_json = json.dumps([generated_att.model_dump()])
+        assistant_msg = Message(
+            conversation_id=conv.id,
+            role="assistant",
+            content=assistant_reply,
+            attachments=attachments_json,
+            sources="[]",
+            rag_citations="[]",
+            audio_url=None,
+        )
+        db.add(assistant_msg)
+        db.commit()
+        db.refresh(assistant_msg)
+
+        return ChatResponse(
+            conversation_id=conv.id,
+            user_message=MessageSchema(
+                id=user_msg.id,
+                conversation_id=user_msg.conversation_id,
+                role=user_msg.role,
+                content=user_msg.content,
+                attachments=payload.attachments,
+                sources=[],
+                rag_citations=[],
+                audio_url=None,
+                created_at=user_msg.created_at,
+            ),
+            assistant_message=MessageSchema(
+                id=assistant_msg.id,
+                conversation_id=assistant_msg.conversation_id,
+                role=assistant_msg.role,
+                content=assistant_msg.content,
+                attachments=[generated_att],
+                sources=[],
+                rag_citations=[],
+                audio_url=None,
+                created_at=assistant_msg.created_at,
+            ),
+            sources=[],
+            rag_citations=[],
+            audio_url=None,
+        )
+
     # 4. Context Gathering: RAG
     rag_chunks = []
     rag_citations = []
@@ -136,11 +202,42 @@ async def send_chat_message(
                 snippet=s.get("snippet", ""),
             ))
 
-    # 6. Extract image file paths for vision
+    # 6. Extract multimodal attachments (images for vision, docs for immediate grounding, audio for speech)
     image_paths = []
+    attached_doc_chunks = []
     for att in payload.attachments:
-        if att.file_type in ["png", "jpg", "jpeg", "webp", "gif"] and att.file_path:
+        f_type = (att.file_type or "").lower().lstrip(".")
+        if f_type in ["png", "jpg", "jpeg", "webp", "gif"] and att.file_path:
             image_paths.append(att.file_path)
+        elif f_type in ["pdf", "docx", "txt", "md"] and att.file_path and os.path.exists(att.file_path):
+            try:
+                doc_text = DocumentService.extract_text(att.file_path, f_type)
+                if doc_text:
+                    attached_doc_chunks.append({
+                        "document_name": att.filename,
+                        "chunk_index": 0,
+                        "snippet": doc_text[:4000],
+                    })
+                    rag_citations.append(RAGCitation(
+                        document_name=att.filename,
+                        chunk_index=0,
+                        snippet=doc_text[:150] + "...",
+                    ))
+            except Exception:
+                pass
+        elif f_type in ["mp3", "wav", "m4a", "webm", "ogg"] and att.file_path and os.path.exists(att.file_path):
+            try:
+                transcription = AudioService.transcribe(att.file_path)
+                if transcription:
+                    attached_doc_chunks.append({
+                        "document_name": f"Voice/Audio ({att.filename})",
+                        "chunk_index": 0,
+                        "snippet": transcription,
+                    })
+            except Exception:
+                pass
+
+    all_context_chunks = rag_chunks + attached_doc_chunks
 
     # 7. Build conversation history for multi-turn LLM context
     history_messages = []
@@ -158,7 +255,7 @@ async def send_chat_message(
     llm = get_llm_provider()
     response_text = llm.generate_response(
         messages=history_messages,
-        context_chunks=rag_chunks if rag_chunks else None,
+        context_chunks=all_context_chunks if all_context_chunks else None,
         web_search_results=web_results if web_results else None,
         images=image_paths if image_paths else None,
     )

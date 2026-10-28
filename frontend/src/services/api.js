@@ -107,6 +107,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  updateWorkspaceDocument: (id, payload) =>
+    request(`/api/documents/workspace/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   listWorkspaceDocuments: () => request('/api/documents/workspace'),
   downloadWorkspaceDocumentUrl: (id, format = 'docx') =>
     `/api/documents/workspace/${id}/download?format=${format}`,
@@ -123,5 +128,15 @@ export const api = {
     request('/api/audio/synthesize', {
       method: 'POST',
       body: JSON.stringify({ text, voice }),
+    }),
+  generateImage: (prompt, width = 768, height = 768) =>
+    request('/api/images/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, width, height }),
+    }),
+  translateText: (payload) =>
+    request('/api/translate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 };

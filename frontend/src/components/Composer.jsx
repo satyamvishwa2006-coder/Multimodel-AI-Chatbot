@@ -76,6 +76,24 @@ export function Composer({ onSendMessage, isGenerating }) {
     }
   };
 
+  // Quick image generation trigger
+  const handleGenerateImageClick = () => {
+    let promptToUse = text.trim();
+    if (!promptToUse) {
+      promptToUse = window.prompt('Describe the image you want to generate:');
+    }
+    if (!promptToUse || !promptToUse.trim()) return;
+
+    onSendMessage({
+      message: `Generate an image of ${promptToUse.trim()}`,
+      attachments: [],
+      enable_web_search: false,
+      enable_rag: false,
+      enable_tts: false,
+    });
+    setText('');
+  };
+
   // Submit message
   const handleSubmit = (e) => {
     e?.preventDefault();
@@ -106,18 +124,32 @@ export function Composer({ onSendMessage, isGenerating }) {
         {/* Attachment preview chips */}
         {attachments.length > 0 && (
           <div className="attachment-preview-bar">
-            {attachments.map((att) => (
-              <div key={att.id} className="attachment-chip">
-                <span>📎 {att.filename}</span>
-                <button
-                  className="btn-remove-chip"
-                  onClick={() => handleRemoveAttachment(att.id)}
-                  title="Remove attachment"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            {attachments.map((att) => {
+              const isImg = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes((att.file_type || '').toLowerCase());
+              return (
+                <div key={att.id} className="attachment-chip" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {isImg && att.url ? (
+                    <img
+                      src={att.url}
+                      alt={att.filename}
+                      style={{ width: '26px', height: '26px', objectFit: 'cover', borderRadius: '4px' }}
+                    />
+                  ) : (
+                    <span>📎</span>
+                  )}
+                  <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {att.filename}
+                  </span>
+                  <button
+                    className="btn-remove-chip"
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    title="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -164,6 +196,17 @@ export function Composer({ onSendMessage, isGenerating }) {
               🎤
             </button>
 
+            {/* AI Image Generation Trigger */}
+            <button
+              className="icon-btn image-gen-btn"
+              title="Generate AI image from text prompt"
+              onClick={handleGenerateImageClick}
+              disabled={isGenerating || isUploading}
+              id="btn-image-generate"
+            >
+              🎨
+            </button>
+
             {/* Web Search Toggle Pill */}
             <button
               className={`toggle-pill ${isWebSearchEnabled ? 'active' : ''}`}
@@ -171,7 +214,8 @@ export function Composer({ onSendMessage, isGenerating }) {
               title="Toggle live Web Search"
               id="btn-search-toggle"
             >
-              🌐 Web Search {isWebSearchEnabled ? 'ON' : 'OFF'}
+              <span className="search-led"></span>
+              <span>🌐 Web Search {isWebSearchEnabled ? 'ON' : 'OFF'}</span>
             </button>
           </div>
 
@@ -181,10 +225,22 @@ export function Composer({ onSendMessage, isGenerating }) {
               onClick={handleSubmit}
               disabled={(!text.trim() && attachments.length === 0) || isGenerating || isUploading}
               id="btn-send-message"
-              title="Send message"
+              title="Send message (Enter)"
             >
               {isGenerating ? '⏳' : '↑'}
             </button>
+          </div>
+        </div>
+
+        {/* Modern Hint Row */}
+        <div className="composer-hint-row">
+          <div className="composer-hint-left">
+            <span>⚡ Powered by Gemini 3.1 Flash Lite</span>
+            <span>•</span>
+            <span>Multimodal AI Studio</span>
+          </div>
+          <div className="composer-hint-right">
+            <span>↵ to send • Shift+↵ for new line</span>
           </div>
         </div>
       </div>

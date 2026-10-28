@@ -14,6 +14,7 @@ export function Sidebar({
   onDeleteRAGDoc,
   sessionId,
   onSessionReset,
+  onOpenLiveVoice,
 }) {
   const ragFileInputRef = useRef(null);
 
@@ -42,15 +43,33 @@ export function Sidebar({
       <div className="sidebar-header">
         <div className="brand-badge">
           <div className="brand-icon">✨</div>
-          <span>M-Chatbot</span>
+          <span className="brand-title">M-Chatbot</span>
+          <span className="brand-tag">PRO</span>
         </div>
       </div>
 
-      {/* New Chat Button */}
-      <button className="btn-new-chat" onClick={onNewChat} id="btn-new-chat">
-        <span>+</span>
-        <span>New Conversation</span>
-      </button>
+      {/* Action Buttons Section */}
+      <div className="sidebar-actions">
+        {/* Live Voice Companion Trigger */}
+        <button
+          className="btn-live-voice-call"
+          onClick={onOpenLiveVoice}
+          id="btn-live-voice"
+          title="Open Live Talking Assistant (Voice Call)"
+        >
+          <div className="voice-call-left">
+            <span>🎙️</span>
+            <span>Live Voice Talk</span>
+          </div>
+          <span className="live-pill-badge">LIVE</span>
+        </button>
+
+        {/* New Chat Button */}
+        <button className="btn-new-chat" onClick={onNewChat} id="btn-new-chat">
+          <span>✨</span>
+          <span>New Conversation</span>
+        </button>
+      </div>
 
       {/* Mode Switcher */}
       <div className="mode-switch-group">
@@ -59,14 +78,21 @@ export function Sidebar({
           onClick={() => onChangeMode('chat')}
           id="tab-mode-chat"
         >
-          💬 Chat
+          <span>💬</span> Chat
+        </button>
+        <button
+          className={`mode-tab ${activeMode === 'translator' ? 'active' : ''}`}
+          onClick={() => onChangeMode('translator')}
+          id="tab-mode-translator"
+        >
+          <span>🌐</span> Translate
         </button>
         <button
           className={`mode-tab ${activeMode === 'workspace' ? 'active' : ''}`}
           onClick={() => onChangeMode('workspace')}
           id="tab-mode-workspace"
         >
-          📝 Workspace
+          <span>📝</span> Docs
         </button>
       </div>
 
@@ -74,12 +100,14 @@ export function Sidebar({
       <div className="sidebar-content">
         <div className="section-label">
           <span>Conversations</span>
-          <span style={{ fontSize: '0.7rem' }}>({conversations.length})</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 800 }}>
+            {conversations.length}
+          </span>
         </div>
 
         {conversations.length === 0 ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            No conversations yet. Start one above!
+          <div style={{ padding: '0.85rem 0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+            No chats yet. Start asking questions or generating art!
           </div>
         ) : (
           conversations.map((conv) => (
@@ -111,11 +139,11 @@ export function Sidebar({
           <div className="section-label" style={{ paddingLeft: 0, paddingRight: 0 }}>
             <span>Knowledge Base (RAG)</span>
             <button
-              style={{ color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 600 }}
+              className="btn-upload-doc-pill"
               onClick={() => ragFileInputRef.current?.click()}
               title="Add document to knowledge base"
             >
-              + Add Doc
+              + Upload Doc
             </button>
           </div>
           <input
@@ -127,13 +155,13 @@ export function Sidebar({
           />
 
           {ragDocuments.length === 0 ? (
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.3rem 0' }}>
-              No indexed documents. Upload PDF, DOCX, TXT, or MD to chat with your files.
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', padding: '0.4rem 0', lineHeight: 1.4 }}>
+              Upload PDF, DOCX, TXT, or MD to chat with your knowledge files.
             </div>
           ) : (
             ragDocuments.map((doc) => (
               <div key={doc.id} className="rag-doc-item">
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }} title={doc.filename}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '175px' }} title={doc.filename}>
                   📄 {doc.filename}
                 </span>
                 <button
@@ -151,17 +179,23 @@ export function Sidebar({
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
-        <div className="session-indicator" title={`Session ID: ${sessionId}`}>
-          <div className="status-dot"></div>
-          <span>Anonymous Session</span>
+        <div className="footer-model-badge">
+          <div className="model-pill">
+            <span className="pulse-dot"></span>
+            <span>Gemini 3.1 Flash Lite</span>
+          </div>
+          <span style={{ fontSize: '0.68rem', color: '#64748b' }}>v2.4</span>
         </div>
-        <button
-          onClick={handleReset}
-          style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textDecoration: 'underline' }}
-          title="Start fresh with a new anonymous session ID"
-        >
-          Reset
-        </button>
+        <div className="session-row">
+          <span style={{ color: '#64748b' }}>Session: {sessionId.slice(0, 8)}...</span>
+          <button
+            onClick={handleReset}
+            style={{ color: '#38bdf8', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}
+            title="Start fresh with a new anonymous session ID"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </aside>
   );

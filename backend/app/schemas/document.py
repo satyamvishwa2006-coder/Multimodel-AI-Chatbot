@@ -39,6 +39,12 @@ class WorkspaceDocumentEdit(BaseModel):
     target_language: Optional[str] = "Spanish"
 
 
+class WorkspaceDocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    original_content: Optional[str] = None
+    revised_content: Optional[str] = None
+
+
 class WorkspaceDocumentResponse(BaseModel):
     id: str
     session_id: str

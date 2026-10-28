@@ -1,8 +1,11 @@
 import abc
 import hashlib
+import logging
 import math
 from typing import List
 from app.core.config import settings
+
+logger = logging.getLogger("uvicorn.error")
 
 
 class BaseEmbeddingProvider(abc.ABC):
@@ -80,11 +83,89 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         return [d.embedding for d in response.data]
 
 
+class GeminiEmbeddingProvider(BaseEmbeddingProvider):
+    """
+    Production Gemini embedding provider using the google-genai SDK.
+    Uses gemini-embedding-001 for text embeddings with task_type support.
+    """
+    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
+        from google import genai
+        self.client = genai.Client(api_key=api_key)
+        self.model = model
+
+    def embed_text(self, text: str) -> List[float]:
+        from google.genai import types
+        try:
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=settings.EMBEDDING_DIMENSION,
+                ),
+            )
+            # result.embeddings is a list; single text returns one embedding
+            if result.embeddings and len(result.embeddings) > 0:
+                return list(result.embeddings[0].values)
+            return [0.0] * settings.EMBEDDING_DIMENSION
+        except Exception as e:
+            logger.error(f"Gemini embedding error: {e}")
+            return [0.0] * settings.EMBEDDING_DIMENSION
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Embeds multiple texts. gemini-embedding-001 supports passing a list
+        of strings to embed_content to get individual embeddings for each.
+        """
+        if not texts:
+            return []
+        from google.genai import types
+        try:
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=texts,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=settings.EMBEDDING_DIMENSION,
+                ),
+            )
+            return [list(e.values) for e in result.embeddings]
+        except Exception as e:
+            logger.error(f"Gemini batch embedding error: {e}")
+            # Fallback: embed individually
+            return [self.embed_text(t) for t in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        """Specialized embed for search queries with RETRIEVAL_QUERY task type."""
+        from google.genai import types
+        try:
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_QUERY",
+                    output_dimensionality=settings.EMBEDDING_DIMENSION,
+                ),
+            )
+            if result.embeddings and len(result.embeddings) > 0:
+                return list(result.embeddings[0].values)
+            return [0.0] * settings.EMBEDDING_DIMENSION
+        except Exception as e:
+            logger.error(f"Gemini query embedding error: {e}")
+            return [0.0] * settings.EMBEDDING_DIMENSION
+
+
 def get_embedding_provider() -> BaseEmbeddingProvider:
     provider = settings.EMBEDDING_PROVIDER.lower().strip()
+    if provider == "gemini" and settings.GEMINI_API_KEY:
+        return GeminiEmbeddingProvider(
+            api_key=settings.GEMINI_API_KEY,
+            model=settings.GEMINI_EMBEDDING_MODEL,
+        )
     if provider == "openai" and settings.OPENAI_API_KEY:
         return OpenAIEmbeddingProvider(
             api_key=settings.OPENAI_API_KEY,
             model=settings.OPENAI_EMBEDDING_MODEL
         )
     return MockDeterministicEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+

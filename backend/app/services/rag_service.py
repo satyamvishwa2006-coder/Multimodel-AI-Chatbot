@@ -115,7 +115,11 @@ class RAGService:
         Uses native pgvector distance if available, or exact in-memory cosine ranking.
         """
         embed_provider = get_embedding_provider()
-        query_vector = embed_provider.embed_text(query)
+        # Use specialized query embedding if available (e.g., Gemini RETRIEVAL_QUERY task type)
+        if hasattr(embed_provider, 'embed_query'):
+            query_vector = embed_provider.embed_query(query)
+        else:
+            query_vector = embed_provider.embed_text(query)
 
         # Get all documents for current session
         docs = db.query(KnowledgeDocument).filter(KnowledgeDocument.session_id == session_id).all()

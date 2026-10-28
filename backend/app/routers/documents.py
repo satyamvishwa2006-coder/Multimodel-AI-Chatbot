@@ -11,6 +11,7 @@ from app.schemas.document import (
     KnowledgeDocumentResponse,
     WorkspaceDocumentCreate,
     WorkspaceDocumentEdit,
+    WorkspaceDocumentUpdate,
     WorkspaceDocumentResponse,
 )
 from app.services.rag_service import RAGService
@@ -151,6 +152,33 @@ def edit_workspace_document(
 
     doc.revised_content = revised_text
     doc.version_number += 1
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+@router.put("/workspace/{document_id}", response_model=WorkspaceDocumentResponse)
+def update_workspace_document(
+    document_id: str,
+    payload: WorkspaceDocumentUpdate,
+    session_id: str = Depends(get_session_id),
+    db: Session = Depends(get_db),
+):
+    """Directly updates a workspace document draft (manual save or accept revisions)."""
+    doc = db.query(DocumentVersion).filter(
+        DocumentVersion.id == document_id,
+        DocumentVersion.session_id == session_id,
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Workspace document not found.")
+
+    if payload.title is not None:
+        doc.title = payload.title
+    if payload.original_content is not None:
+        doc.original_content = payload.original_content
+    if payload.revised_content is not None:
+        doc.revised_content = payload.revised_content
+
     db.commit()
     db.refresh(doc)
     return doc

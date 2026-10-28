@@ -1,10 +1,14 @@
+/* ==============================================================
+   DOCUMENT WORKSPACE - CYBER-GLASS STYLING
+   ============================================================== */
+
 .workspace-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 2rem;
+  padding: 1.8rem 2.5rem;
   overflow-y: auto;
-  gap: 1.25rem;
+  gap: 1.4rem;
 }
 
 .workspace-toolbar {
@@ -12,57 +16,68 @@
   align-items: center;
   justify-content: space-between;
   background: var(--bg-card);
-  padding: 0.85rem 1.25rem;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 1rem 1.4rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
-  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-title-input {
   background: transparent;
   border: none;
   font-family: var(--font-heading);
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   color: var(--text-main);
   outline: none;
-  min-width: 200px;
+  min-width: 240px;
+  letter-spacing: -0.01em;
 }
 
 .workspace-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .action-btn {
-  padding: 0.4rem 0.8rem;
+  padding: 0.5rem 0.95rem;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-glass);
   color: var(--text-main);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  transition: all 0.15s ease;
+  gap: 0.4rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
 }
 
 .action-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
   color: white;
+  transform: translateY(-1px);
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, var(--accent-primary), #4338ca);
+  background: var(--accent-gradient);
   color: white;
   border: none;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px var(--accent-glow);
+  filter: brightness(1.1);
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -70,35 +85,51 @@
 .editor-comparison-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  gap: 1.4rem;
   flex: 1;
-  min-height: 480px;
+  min-height: 500px;
+}
+
+@media (max-width: 850px) {
+  .editor-comparison-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .editor-card {
   background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s;
+}
+
+.editor-card:focus-within {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .editor-card-header {
-  padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  padding: 0.85rem 1.2rem;
+  background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--text-secondary);
 }
 
 .editor-card-body {
   flex: 1;
-  padding: 1rem;
+  padding: 1.2rem;
   display: flex;
 }
 
@@ -110,8 +141,8 @@
   outline: none;
   resize: none;
   font-family: var(--font-sans);
-  font-size: 0.92rem;
-  line-height: 1.6;
+  font-size: 0.98rem;
+  line-height: 1.7;
   color: var(--text-main);
 }
 
@@ -119,27 +150,29 @@
 .download-bar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin-top: auto;
-  padding-top: 0.5rem;
+  padding-top: 0.6rem;
 }
 
 .download-link {
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 1rem;
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
   border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  transition: all 0.15s ease;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
 }
 
 .download-link:hover {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.3);
   color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px var(--emerald-glow);
 }
