@@ -217,3 +217,5 @@ M-Chatbot/
 - **API Keys**: Stored exclusively on the server in `.env`. Never exposed to the client.
 - **Anonymous Sessions**: Sessions are identified by a random browser token (`x-session-id`). If you clear your browser cookies/localStorage, you will receive a new session. No personal passwords or tracking data are kept.
 - **Content Safety**: Uploaded files and web search results are treated as untrusted data and strictly isolated from system prompts.
+
+User Satyam
