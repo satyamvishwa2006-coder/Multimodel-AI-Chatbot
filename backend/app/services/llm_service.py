@@ -3,7 +3,8 @@ import base64
 import logging
 import os
 import re
-from typing import List, Dict, Any, Optional
+import time
+from typing import List, Dict, Any, Optional, Iterator
 from app.core.config import settings
 from app.services.safety_service import SafetyService
 
@@ -22,6 +23,21 @@ class BaseLLMProvider(abc.ABC):
     ) -> str:
         """Generates an assistant response."""
         pass
+
+    def generate_response_stream(
+        self,
+        messages: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+        context_chunks: Optional[List[Dict[str, Any]]] = None,
+        web_search_results: Optional[List[Dict[str, Any]]] = None,
+        images: Optional[List[str]] = None,
+    ) -> Iterator[str]:
+        """Generates streaming tokens for assistant response."""
+        full_text = self.generate_response(messages, system_prompt, context_chunks, web_search_results, images)
+        words = full_text.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
+            time.sleep(0.015)
 
 
 class MockLLMProvider(BaseLLMProvider):
@@ -153,7 +169,6 @@ class OpenAILLMProvider(BaseLLMProvider):
     ) -> str:
         prompt_system = system_prompt or SafetyService.get_system_prompt()
 
-        # Augment with RAG context
         if context_chunks:
             chunk_text = "\n\n---\n\n".join([
                 f"[Document: {c.get('document_name')}, Chunk {c.get('chunk_index')}]:\n{c.get('snippet')}"
@@ -165,7 +180,6 @@ class OpenAILLMProvider(BaseLLMProvider):
                 f"Cite the document name when stating facts from it. If the context does not contain enough information, state so clearly."
             )
 
-        # Augment with Web search results
         if web_search_results:
             search_text = "\n\n".join([
                 f"Title: {s.get('title')}\nURL: {s.get('url')}\nSnippet: {s.get('snippet')}"
@@ -182,7 +196,6 @@ class OpenAILLMProvider(BaseLLMProvider):
             role = m.get("role", "user")
             content = m.get("content", "")
 
-            # If last user message has images, format as multimodal content
             if idx == len(messages) - 1 and role == "user" and images:
                 content_parts = [{"type": "text", "text": content}]
                 for img_path in images:
@@ -210,26 +223,25 @@ class OpenAILLMProvider(BaseLLMProvider):
 class GeminiLLMProvider(BaseLLMProvider):
     """
     Production Gemini LLM provider using the google-genai SDK models API.
-    Supports text chat, multimodal vision (images), RAG context, and web search grounding.
+    Supports text chat, multimodal vision (images & video frames), RAG context, and streaming.
     """
-    def __init__(self, api_key: str, model: str = "gemini-3.5-flash"):
+    def __init__(self, api_key: str, model: str = "gemini-3.1-flash-lite"):
         from google import genai
         self.client = genai.Client(api_key=api_key)
         self.model = model
 
-    def generate_response(
+    def _prepare_request(
         self,
         messages: List[Dict[str, Any]],
         system_prompt: Optional[str] = None,
         context_chunks: Optional[List[Dict[str, Any]]] = None,
         web_search_results: Optional[List[Dict[str, Any]]] = None,
         images: Optional[List[str]] = None,
-    ) -> str:
+    ):
         from google.genai import types
 
         system_instruction = system_prompt or SafetyService.get_system_prompt()
 
-        # Augment system instruction with RAG context
         if context_chunks:
             chunk_text = "\n\n---\n\n".join([
                 f"[Document: {c.get('document_name')}, Chunk {c.get('chunk_index')}]:\n{c.get('snippet')}"
@@ -241,7 +253,6 @@ class GeminiLLMProvider(BaseLLMProvider):
                 f"Cite the document name when stating facts from it. If the context does not contain enough information, state so clearly."
             )
 
-        # Augment system instruction with web search results
         if web_search_results:
             search_text = "\n\n".join([
                 f"Title: {s.get('title')}\nURL: {s.get('url')}\nSnippet: {s.get('snippet')}"
@@ -252,14 +263,12 @@ class GeminiLLMProvider(BaseLLMProvider):
                 f"INSTRUCTIONS: Ground your answer in the web search results. Clearly distinguish sourced facts from your explanation. Do not fabricate URLs."
             )
 
-        # Prepare multi-turn contents
         contents: List[types.Content] = []
         for idx, m in enumerate(messages):
             role_str = m.get("role", "user")
             genai_role = "model" if role_str == "assistant" else "user"
             msg_content = m.get("content", "")
 
-            # If last turn and there are image attachments, attach parts
             if idx == len(messages) - 1 and genai_role == "user" and images:
                 parts: List[types.Part] = []
                 for img_path in images:
@@ -295,14 +304,28 @@ class GeminiLLMProvider(BaseLLMProvider):
         )
 
         candidate_models = [
-            "gemini-3.1-flash-lite",
             "gemini-flash-lite-latest",
-            "gemini-3.1-flash-lite-preview",
+            "gemini-flash-latest",
+            "gemini-2.5-flash-lite",
+            "gemini-3.5-flash",
             self.model,
         ]
-        # Deduplicate while preserving order
         seen = set()
         models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
+
+        return contents, config, models_to_try
+
+    def generate_response(
+        self,
+        messages: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+        context_chunks: Optional[List[Dict[str, Any]]] = None,
+        web_search_results: Optional[List[Dict[str, Any]]] = None,
+        images: Optional[List[str]] = None,
+    ) -> str:
+        contents, config, models_to_try = self._prepare_request(
+            messages, system_prompt, context_chunks, web_search_results, images
+        )
 
         for model_name in models_to_try:
             try:
@@ -317,7 +340,6 @@ class GeminiLLMProvider(BaseLLMProvider):
                 logger.warning(f"Gemini API attempt with {model_name} failed: {e}")
                 continue
 
-        # If all Gemini models fail or hit rate limits, fall back to Mock provider gracefully
         logger.error("All Gemini API models failed; falling back to Mock provider.")
         return MockLLMProvider().generate_response(
             messages=messages,
@@ -326,6 +348,46 @@ class GeminiLLMProvider(BaseLLMProvider):
             web_search_results=web_search_results,
             images=images,
         )
+
+    def generate_response_stream(
+        self,
+        messages: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+        context_chunks: Optional[List[Dict[str, Any]]] = None,
+        web_search_results: Optional[List[Dict[str, Any]]] = None,
+        images: Optional[List[str]] = None,
+    ) -> Iterator[str]:
+        contents, config, models_to_try = self._prepare_request(
+            messages, system_prompt, context_chunks, web_search_results, images
+        )
+
+        for model_name in models_to_try:
+            try:
+                stream = self.client.models.generate_content_stream(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                )
+                yielded = False
+                for chunk in stream:
+                    if chunk.text:
+                        yield chunk.text
+                        yielded = True
+                if yielded:
+                    return
+            except Exception as e:
+                logger.warning(f"Gemini streaming attempt with {model_name} failed: {e}")
+                continue
+
+        # Fallback to mock stream
+        for token in MockLLMProvider().generate_response_stream(
+            messages=messages,
+            system_prompt=system_prompt,
+            context_chunks=context_chunks,
+            web_search_results=web_search_results,
+            images=images,
+        ):
+            yield token
 
 
 def get_llm_provider() -> BaseLLMProvider:

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MessageItem } from './MessageItem';
 
-export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
+export function ChatArea({ messages, isGenerating, onSendPromptStarter, onRegenerate }) {
   const messagesEndRef = useRef(null);
   const [activeCategory, setActiveCategory] = useState('all');
 
@@ -15,11 +15,25 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
 
   const promptStarters = [
     {
+      category: 'video',
+      badge: 'Video AI',
+      title: '🎥 AI Video Studio',
+      desc: 'Create animated cinematic scenes, physics simulations, or nature vistas',
+      prompt: 'Generate a video of a golden sunset over a calm ocean with moving waves.',
+    },
+    {
+      category: 'code',
+      badge: 'Coding Pro',
+      title: '💻 AI Coding Assistant',
+      desc: 'Generate clean Python, JavaScript, or React code, debug errors, and refactor',
+      prompt: 'Write a fast Python function to find the longest palindromic substring with tests.',
+    },
+    {
       category: 'image',
       badge: 'Creative AI',
       title: '🎨 AI Image Studio',
       desc: 'Generate original photorealistic art, scenery, or cinematic graphics from your vision',
-      prompt: 'Generate an image of a majestic snow-capped mountain reflecting in a crystal lake at sunrise.',
+      prompt: 'Generate an image of a futuristic neon cyber city with flying vehicles in rain.',
     },
     {
       category: 'hindi',
@@ -29,17 +43,10 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
       prompt: 'नमस्ते! मुझे ब्रह्मांड के रहस्यों और ब्लैक होल के बारे में सरल हिंदी में समझाइए।',
     },
     {
-      category: 'vision',
-      badge: 'Multimodal',
-      title: '👁️ Vision & Image Analysis',
-      desc: 'Attach photos, screenshots, or diagrams to explain or analyze them',
-      prompt: 'Please inspect the attached image in detail and explain what it depicts.',
-    },
-    {
       category: 'rag',
       badge: 'Doc Q&A',
-      title: '📄 Analyze Documents (RAG)',
-      desc: 'Upload a PDF or DOCX and ask for key takeaways or deep QA',
+      title: '📄 Analyze Documents & Data',
+      desc: 'Upload a PDF, DOCX, CSV, or XLSX and ask for key takeaways or formulas',
       prompt: 'Can you summarize the main findings from the document I upload?',
     },
     {
@@ -49,19 +56,15 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
       desc: 'Query recent news or global facts with live verified citations',
       prompt: 'Search the web for the latest advancements in artificial intelligence.',
     },
-    {
-      category: 'support',
-      badge: 'Companion',
-      title: '🌱 Thoughtful Space',
-      desc: 'A calm, compassionate space to unpack ideas or a stressful day',
-      prompt: "I've been feeling overwhelmed with deadlines lately. Can you help me sort out my thoughts?",
-    },
   ];
 
   const filteredStarters =
     activeCategory === 'all'
       ? promptStarters
       : promptStarters.filter((s) => s.category === activeCategory);
+
+  // Find index of the latest assistant message
+  const lastAssistantIndex = messages.map((m) => m.role).lastIndexOf('assistant');
 
   return (
     <div className="chat-container">
@@ -70,13 +73,13 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
           <div className="welcome-screen">
             {/* 3D Holographic AI Sphere */}
             <div className="welcome-orb-badge">
-              <span>✨</span>
+              <span>⚡</span>
             </div>
 
-            <h1 className="welcome-title">What would you like to explore?</h1>
+            <h1 className="welcome-title">What would you like to create today?</h1>
             <p className="welcome-subtitle">
-              Your next-generation multimodal AI companion. Converses in Hindi and all world languages,
-              creates original art, analyzes documents, and searches the live web.
+              Your next-generation multimodal AI companion. Converses in Hindi & all world languages,
+              generates images & videos, assists with code, analyzes documents, and searches the live web.
             </p>
 
             {/* Quick Category Chips */}
@@ -88,28 +91,34 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
                 ✨ All Modes
               </button>
               <button
+                className={`starter-filter-pill ${activeCategory === 'video' ? 'active' : ''}`}
+                onClick={() => setActiveCategory('video')}
+              >
+                🎥 Video
+              </button>
+              <button
+                className={`starter-filter-pill ${activeCategory === 'code' ? 'active' : ''}`}
+                onClick={() => setActiveCategory('code')}
+              >
+                💻 Code
+              </button>
+              <button
                 className={`starter-filter-pill ${activeCategory === 'image' ? 'active' : ''}`}
                 onClick={() => setActiveCategory('image')}
               >
-                🎨 Image Studio
+                🎨 Image
               </button>
               <button
                 className={`starter-filter-pill ${activeCategory === 'hindi' ? 'active' : ''}`}
                 onClick={() => setActiveCategory('hindi')}
               >
-                🇮🇳 Hindi / Universal
-              </button>
-              <button
-                className={`starter-filter-pill ${activeCategory === 'rag' ? 'active' : ''}`}
-                onClick={() => setActiveCategory('rag')}
-              >
-                📄 Doc RAG
+                🇮🇳 Hindi
               </button>
               <button
                 className={`starter-filter-pill ${activeCategory === 'web' ? 'active' : ''}`}
                 onClick={() => setActiveCategory('web')}
               >
-                🌐 Web Search
+                🌐 Web
               </button>
             </div>
 
@@ -131,7 +140,14 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
             </div>
           </div>
         ) : (
-          messages.map((msg) => <MessageItem key={msg.id} message={msg} />)
+          messages.map((msg, index) => (
+            <MessageItem
+              key={msg.id || index}
+              message={msg}
+              onRegenerate={onRegenerate}
+              isLatestAssistant={index === lastAssistantIndex}
+            />
+          ))
         )}
 
         {/* Synaptic Neural Thinking Indicator */}
@@ -144,7 +160,7 @@ export function ChatArea({ messages, isGenerating, onSendPromptStarter }) {
                 <span className="neural-dot"></span>
                 <span className="neural-dot"></span>
               </div>
-              <span className="thinking-text">Synthesizing multimodal response...</span>
+              <span className="thinking-text">Synthesizing multimodal streaming response...</span>
             </div>
           </div>
         )}

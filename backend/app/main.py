@@ -5,7 +5,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.db.session import init_db
-from app.routers import health, conversations, uploads, chat, documents, search, audio, images, translator
+from app.routers import (
+    health,
+    conversations,
+    uploads,
+    chat,
+    documents,
+    search,
+    audio,
+    images,
+    translator,
+    videos,
+    preferences,
+)
 
 
 @asynccontextmanager
@@ -17,8 +29,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Beginner-friendly Multimodal AI Assistant with RAG, Web Search, and Document Workspace",
-    version="1.0.0",
+    description="Full-stack Multimodal AI Assistant with RAG, Vision, Audio, Video, Coding, and Personalization",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -31,7 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static file serving for uploads (images, audio, docs)
+# Static file serving for uploads (images, audio, docs, videos)
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
@@ -45,6 +57,8 @@ app.include_router(search.router)
 app.include_router(audio.router)
 app.include_router(images.router)
 app.include_router(translator.router)
+app.include_router(videos.router)
+app.include_router(preferences.router)
 
 
 @app.get("/")
@@ -53,4 +67,5 @@ def root():
         "message": f"Welcome to {settings.APP_NAME} API",
         "docs": "/docs",
         "health": "/api/health",
+        "version": "2.0.0",
     }

@@ -45,13 +45,19 @@ create_db_engine()
 
 
 def init_db():
-    """Initializes tables on startup."""
+    """Initializes tables on startup and handles incremental SQLite column migrations."""
     Base.metadata.create_all(bind=engine)
+    try:
+        with engine.connect() as conn:
+            # Check if feedback column exists on messages
+            conn.execute(text("ALTER TABLE messages ADD COLUMN feedback VARCHAR;"))
+            conn.commit()
+    except Exception:
+        pass
     logger.info(f"Database schema initialized using {ACTIVE_DB_TYPE}.")
 
 
 def get_db():
-    """FastAPI dependency yielding a database session."""
     db = SessionLocal()
     try:
         yield db

@@ -12,6 +12,14 @@ class ChatRequest(BaseModel):
     enable_tts: bool = False
 
 
+class RegenerateRequest(BaseModel):
+    conversation_id: str
+    message_id: Optional[str] = None
+    enable_web_search: bool = False
+    enable_rag: bool = True
+    enable_tts: bool = False
+
+
 class ChatResponse(BaseModel):
     conversation_id: str
     user_message: MessageSchema

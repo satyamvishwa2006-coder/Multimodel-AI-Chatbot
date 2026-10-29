@@ -5,10 +5,18 @@ from fastapi import HTTPException, UploadFile
 from app.core.config import settings
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
-ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".webm", ".ogg"}
+ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv", ".xlsx", ".xls", ".pptx", ".json"}
+ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
+ALLOWED_CODE_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".java", ".cpp", ".c", ".rs", ".go", ".sql", ".sh"}
 
-ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_DOCUMENT_EXTENSIONS | ALLOWED_AUDIO_EXTENSIONS
+ALLOWED_EXTENSIONS = (
+    ALLOWED_IMAGE_EXTENSIONS
+    | ALLOWED_DOCUMENT_EXTENSIONS
+    | ALLOWED_AUDIO_EXTENSIONS
+    | ALLOWED_VIDEO_EXTENSIONS
+    | ALLOWED_CODE_EXTENSIONS
+)
 MAX_FILE_SIZE_BYTES = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 
@@ -36,6 +44,10 @@ def validate_file_upload(file: UploadFile) -> Tuple[str, str]:
 
     if ext in ALLOWED_IMAGE_EXTENSIONS:
         category = "image"
+    elif ext in ALLOWED_VIDEO_EXTENSIONS:
+        category = "video"
+    elif ext in ALLOWED_CODE_EXTENSIONS:
+        category = "code"
     elif ext in ALLOWED_DOCUMENT_EXTENSIONS:
         category = "document"
     elif ext in ALLOWED_AUDIO_EXTENSIONS:

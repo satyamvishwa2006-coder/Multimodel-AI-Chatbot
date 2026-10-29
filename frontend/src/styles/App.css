@@ -1026,3 +1026,133 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px var(--accent-glow);
 }
+
+
+/* ==============================================================
+   LIGHT THEME OVERRIDES
+   ============================================================== */
+[data-theme="light"] {
+  --bg-main: #f8fafc;
+  --bg-sidebar: rgba(241, 245, 249, 0.95);
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(241, 245, 249, 0.95);
+  --bg-input: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --text-main: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-highlight: #0284c7;
+
+  --border-light: rgba(0, 0, 0, 0.1);
+  --border-glass: rgba(0, 0, 0, 0.12);
+  --border-focus: rgba(99, 102, 241, 0.6);
+  --border-glow: rgba(139, 92, 246, 0.3);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .brand-title {
+  background: linear-gradient(135deg, #1e293b 40%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .assistant-bubble {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .user-bubble {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+}
+
+[data-theme="light"] .composer-box {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .composer-textarea {
+  color: #0f172a;
+}
+
+[data-theme="light"] .starter-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .starter-card:hover {
+  background: #f1f5f9;
+}
+
+[data-theme="light"] .conversation-item {
+  color: #334155;
+}
+
+[data-theme="light"] .conversation-item:hover,
+[data-theme="light"] .conversation-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
+/* ==============================================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ============================================================== */
+.btn-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  border-radius: 8px;
+  font-size: 1.15rem;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 868px) {
+  .btn-hamburger {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  }
+
+  .main-content {
+    width: 100vw;
+  }
+
+  .top-bar-right {
+    gap: 0.35rem;
+  }
+
+  .health-badge {
+    display: none;
+  }
+
+  .starter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-comparison-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -81,9 +81,38 @@ class Message(Base):
     sources = Column(Text, nullable=False, default="[]")
     rag_citations = Column(Text, nullable=False, default="[]")
     audio_url = Column(String(512), nullable=True)
+    feedback = Column(String(16), nullable=True)  # "like", "dislike", or None
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     conversation = relationship("Conversation", back_populates="messages")
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(64), nullable=False, unique=True, index=True)
+    custom_instructions = Column(Text, nullable=False, default="")
+    preferred_tone = Column(String(32), nullable=False, default="empathetic")  # empathetic, concise, professional, creative
+    preferred_language = Column(String(16), nullable=False, default="auto")
+    memory_notes = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class VideoJob(Base):
+    __tablename__ = "video_jobs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(64), nullable=False, index=True)
+    conversation_id = Column(String(36), nullable=True)
+    prompt = Column(Text, nullable=False)
+    status = Column(String(32), nullable=False, default="completed")  # pending, processing, completed, failed
+    video_url = Column(String(512), nullable=False)
+    thumbnail_url = Column(String(512), nullable=True)
+    duration_seconds = Column(Integer, nullable=False, default=5)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class KnowledgeDocument(Base):

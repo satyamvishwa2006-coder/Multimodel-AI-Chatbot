@@ -10,6 +10,8 @@ export function DocumentWorkspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [showPromptInput, setShowPromptInput] = useState(false);
+  const [viewMode, setViewMode] = useState('split'); // 'split' | 'diff'
+  const [diffLines, setDiffLines] = useState([]);
 
   // Load existing workspace documents
   const loadDocuments = async () => {
@@ -118,6 +120,21 @@ export function DocumentWorkspace() {
     }
   };
 
+  // Compute Diff
+  const handleToggleDiff = async () => {
+    if (viewMode === 'diff') {
+      setViewMode('split');
+      return;
+    }
+    try {
+      const res = await api.compareDocuments(originalContent, revisedContent);
+      setDiffLines(res.diff_lines || []);
+      setViewMode('diff');
+    } catch (err) {
+      alert('Diff comparison error: ' + err.message);
+    }
+  };
+
   return (
     <div className="workspace-container">
       {/* Workspace Top Toolbar */}
@@ -168,11 +185,12 @@ export function DocumentWorkspace() {
 
           <button
             className="action-btn"
-            onClick={() => handleApplyAction('translate')}
-            disabled={isLoading || !originalContent}
-            id="btn-action-translate"
+            onClick={handleToggleDiff}
+            disabled={!originalContent}
+            style={{ background: viewMode === 'diff' ? 'rgba(99, 102, 241, 0.3)' : undefined }}
+            title="Toggle line-by-line diff comparison"
           >
-            🌐 Translate (ES)
+            🔍 {viewMode === 'diff' ? 'Split View' : 'Diff View'}
           </button>
 
           <button
@@ -190,7 +208,7 @@ export function DocumentWorkspace() {
       {showPromptInput && (
         <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-card)', padding: '0.75rem', borderRadius: '8px' }}>
           <input
-            style={{ flex: 1, padding: '0.4rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: '6px', color: 'white' }}
+            style={{ flex: 1, padding: '0.4rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: '6px', color: 'var(--text-main)' }}
             placeholder="e.g. Add a section detailing cloud deployment security..."
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
@@ -205,68 +223,102 @@ export function DocumentWorkspace() {
         </div>
       )}
 
-      {/* Side-by-Side Editor Comparison */}
-      <div className="editor-comparison-grid">
-        {/* Original Content */}
-        <div className="editor-card">
+      {/* Main View: Split Editor vs Diff View */}
+      {viewMode === 'diff' ? (
+        <div className="editor-card" style={{ width: '100%', minHeight: '400px' }}>
           <div className="editor-card-header">
-            <span>ORIGINAL CONTENT</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button
-                className="action-btn"
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                onClick={handleSaveDraft}
-                disabled={!activeDoc || isLoading}
-                title="Save manual changes to database"
-              >
-                💾 Save Draft
-              </button>
-              <span>Version #{activeDoc?.version_number ? activeDoc.version_number - 1 : 1}</span>
-            </div>
+            <span>DIFF COMPARISON (Added vs Removed)</span>
+            <button className="action-btn" onClick={() => setViewMode('split')} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+              Close Diff
+            </button>
           </div>
-          <div className="editor-card-body">
-            <textarea
-              className="editor-textarea"
-              placeholder="Paste or type document content here..."
-              value={originalContent}
-              onChange={(e) => setOriginalContent(e.target.value)}
-              id="textarea-original-doc"
-            />
+          <div style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.82rem', maxHeight: '500px', overflowY: 'auto' }}>
+            {diffLines.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>No differences between original and revised document.</p>
+            ) : (
+              diffLines.map((line, idx) => {
+                const isAdd = line.startsWith('+');
+                const isRem = line.startsWith('-');
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '2px 6px',
+                      background: isAdd ? 'rgba(16, 185, 129, 0.15)' : isRem ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                      color: isAdd ? '#34d399' : isRem ? '#f87171' : 'var(--text-main)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {line}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
-
-        {/* AI Revised Content */}
-        <div className="editor-card" style={{ borderColor: 'var(--border-focus)' }}>
-          <div className="editor-card-header">
-            <span style={{ color: '#c7d2fe' }}>AI REVISED VERSION</span>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                className="action-btn"
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                onClick={handleAcceptRevisions}
-                disabled={!revisedContent || revisedContent === originalContent}
-              >
-                ✓ Accept Changes
-              </button>
+      ) : (
+        <div className="editor-comparison-grid">
+          {/* Original Content */}
+          <div className="editor-card">
+            <div className="editor-card-header">
+              <span>ORIGINAL CONTENT</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  className="action-btn"
+                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                  onClick={handleSaveDraft}
+                  disabled={!activeDoc || isLoading}
+                  title="Save manual changes to database"
+                >
+                  💾 Save Draft
+                </button>
+                <span>Version #{activeDoc?.version_number ? activeDoc.version_number - 1 : 1}</span>
+              </div>
+            </div>
+            <div className="editor-card-body">
+              <textarea
+                className="editor-textarea"
+                placeholder="Paste or type document content here..."
+                value={originalContent}
+                onChange={(e) => setOriginalContent(e.target.value)}
+                id="textarea-original-doc"
+              />
             </div>
           </div>
-          <div className="editor-card-body">
-            <textarea
-              className="editor-textarea"
-              placeholder={isLoading ? 'AI is generating revisions...' : 'Revised document preview will appear here...'}
-              value={revisedContent}
-              onChange={(e) => setRevisedContent(e.target.value)}
-              id="textarea-revised-doc"
-            />
+
+          {/* AI Revised Content */}
+          <div className="editor-card" style={{ borderColor: 'var(--border-focus)' }}>
+            <div className="editor-card-header">
+              <span style={{ color: '#c7d2fe' }}>AI REVISED VERSION</span>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button
+                  className="action-btn"
+                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                  onClick={handleAcceptRevisions}
+                  disabled={!revisedContent || revisedContent === originalContent}
+                >
+                  ✓ Accept Changes
+                </button>
+              </div>
+            </div>
+            <div className="editor-card-body">
+              <textarea
+                className="editor-textarea"
+                placeholder={isLoading ? 'AI is generating revisions...' : 'Revised document preview will appear here...'}
+                value={revisedContent}
+                onChange={(e) => setRevisedContent(e.target.value)}
+                id="textarea-revised-doc"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Download and Export Bar */}
+      {/* Download and Export Bar (DOCX, PDF, XLSX, CSV, MD, TXT) */}
       {activeDoc && (
-        <div className="download-bar">
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-            Export Approved Document:
+        <div className="download-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginRight: '0.5rem', fontWeight: 600 }}>
+            Export Formats:
           </span>
           <a
             href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'docx')}
@@ -274,7 +326,31 @@ export function DocumentWorkspace() {
             download
             id="btn-download-docx"
           >
-            📥 Download .DOCX
+            📥 .DOCX
+          </a>
+          <a
+            href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'pdf')}
+            className="download-link"
+            download
+            id="btn-download-pdf"
+          >
+            📥 .PDF
+          </a>
+          <a
+            href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'xlsx')}
+            className="download-link"
+            download
+            id="btn-download-xlsx"
+          >
+            📥 .XLSX
+          </a>
+          <a
+            href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'csv')}
+            className="download-link"
+            download
+            id="btn-download-csv"
+          >
+            📥 .CSV
           </a>
           <a
             href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'md')}
@@ -282,7 +358,7 @@ export function DocumentWorkspace() {
             download
             id="btn-download-md"
           >
-            📥 Download .MD
+            📥 .MD
           </a>
           <a
             href={api.downloadWorkspaceDocumentUrl(activeDoc.id, 'txt')}
@@ -290,7 +366,7 @@ export function DocumentWorkspace() {
             download
             id="btn-download-txt"
           >
-            📥 Download .TXT
+            📥 .TXT
           </a>
         </div>
       )}

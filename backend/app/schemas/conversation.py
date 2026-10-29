@@ -33,6 +33,7 @@ class MessageSchema(BaseModel):
     sources: List[SourceCitation] = []
     rag_citations: List[RAGCitation] = []
     audio_url: Optional[str] = None
+    feedback: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -40,6 +41,14 @@ class MessageSchema(BaseModel):
 
 class ConversationCreate(BaseModel):
     title: Optional[str] = "New Conversation"
+
+
+class ConversationRename(BaseModel):
+    title: str
+
+
+class MessageFeedbackRequest(BaseModel):
+    feedback: Optional[str] = "like"  # "like", "dislike", None
 
 
 class ConversationResponse(BaseModel):

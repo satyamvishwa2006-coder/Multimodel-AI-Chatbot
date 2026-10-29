@@ -184,14 +184,40 @@ def update_workspace_document(
     return doc
 
 
-@router.get("/workspace/{document_id}/download")
-def download_workspace_document(
+@router.get("/workspace/{document_id}/diff")
+def get_workspace_document_diff(
     document_id: str,
-    format: str = Query("docx", description="'docx', 'md', or 'txt'"),
     session_id: str = Depends(get_session_id),
     db: Session = Depends(get_db),
 ):
-    """Downloads the revised workspace document."""
+    """Returns a line-by-line diff and change summary between original and revised document."""
+    doc = db.query(DocumentVersion).filter(
+        DocumentVersion.id == document_id,
+        DocumentVersion.session_id == session_id,
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Workspace document not found.")
+
+    diff_data = DocumentService.compare_documents(
+        original=doc.original_content or "",
+        revised=doc.revised_content or "",
+    )
+    return {
+        "document_id": doc.id,
+        "title": doc.title,
+        "version_number": doc.version_number,
+        **diff_data,
+    }
+
+
+@router.get("/workspace/{document_id}/download")
+def download_workspace_document(
+    document_id: str,
+    format: str = Query("docx", description="'docx', 'pdf', 'xlsx', 'csv', 'md', or 'txt'"),
+    session_id: str = Depends(get_session_id),
+    db: Session = Depends(get_db),
+):
+    """Downloads the revised workspace document in docx, pdf, xlsx, csv, md, or txt."""
     doc = db.query(DocumentVersion).filter(
         DocumentVersion.id == document_id,
         DocumentVersion.session_id == session_id,
